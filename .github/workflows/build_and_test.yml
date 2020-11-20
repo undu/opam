@@ -1,0 +1,81 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-20.04"]
+        ocaml-version:
+          - "4.02.3"
+          - "4.03.0"
+          - "4.04.2"
+          - "4.05.1"
+          - "4.06.1"
+          - "4.07.1"
+          - "4.08.1"
+          - "4.09.1"
+          - "4.10.1"
+          - "4.11.1"
+        opam-test: [0]
+        cold: [0]
+        stage: ["Build"]
+
+        include:
+          - os: "ubuntu-20-04"
+            stage: "Hygiene"
+          - os: "macos-10.15"
+            ocaml-version: "4.11.1"
+            opam-test: 1
+            stage: "Test"
+          - os: "ubuntu-20.04"
+            ocaml-version: "4.11.1"
+            opam-test: 1
+            stage: "Test"
+          - os: "ubuntu-20.04"
+            ocaml-version: "4.11.1"
+            opam-test: 1
+            cold: 1
+            stage: "Test"
+          - os: "ubuntu-20.04"
+            ocaml-version: "4.11.1"
+            stage: "Upgrade"
+
+    env:
+      OCAML_VERSION: ${{ matrix.ocaml-version }}
+      OPAM_TEST: ${{ matrix.opam-test }}
+      COLD: ${{ matrix.cold }}
+      TRAVIS_BUILD_STAGE_NAME: ${{ matrix.stage }}
+      TRAVIS_COMMIT_RANGE: ${{ github.base_ref }}..${{ github.sha }}
+      TRAVIS_COMMIT: ${{ github.sha }}
+      TRAVIS_EVENT_TYPE: ${{ github.event.name }}
+
+      OPAMBSVERSION: 2.1.0-alpha2
+      # This should be identical to the value in appveyor.yml
+      OPAM_REPO_SHA: 6877131f0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install system packages
+        run: sudo apt-get update && sudo apt-get install aspcud libglpk-dev busybox bubblewrap
+        if: ${{ runner.os == 'Linux' }}
+
+      - name: Prepare
+        run: ./.travis-ci.sh prepare
+
+      - name: Install
+        run: ./.travis-ci.sh install
+
+      - name: Build
+        run: ./.travis-ci.sh build
